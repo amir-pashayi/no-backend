@@ -1,5 +1,5 @@
+import secrets
 import uuid
-from datetime import date
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -56,6 +56,11 @@ class Registration(models.Model):
         verbose_name = "Registration"; verbose_name_plural = "Registrations"
         constraints = [models.UniqueConstraint(fields=["user", "festival"], name="one_registration_per_user_per_festival")]
     def save(self, *args, **kwargs):
-        if not self.tracking_code: self.tracking_code = f"NO-{date.today():%y%m%d}-{uuid.uuid4().hex[:6].upper()}"
+        if not self.tracking_code:
+            while True:
+                tracking_code = f"NO-{secrets.randbelow(9_000_000) + 1_000_000}"
+                if not Registration.objects.filter(tracking_code=tracking_code).exists():
+                    self.tracking_code = tracking_code
+                    break
         super().save(*args, **kwargs)
     def __str__(self): return self.tracking_code

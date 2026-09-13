@@ -8,8 +8,35 @@ EVENTS = [("۲۵ متر کرال سینه تک‌دست", 12, 13), ("۵۰ متر
 
 class Command(BaseCommand):
     help = "داده‌های اولیه جشنواره، مواد مسابقه و استخرها را ایجاد می‌کند."
+
     def handle(self, *args, **kwargs):
-        festival, created = Festival.objects.get_or_create(title="جشنواره همگانی نجات غریق ندای امید", defaults={"registration_starts_at": timezone.now() - timedelta(days=1), "registration_ends_at": timezone.now() + timedelta(days=30), "is_active": True})
-        for name in POOLS: Pool.objects.get_or_create(name=name)
-        for order, (title, min_age, max_age) in enumerate(EVENTS, start=1): CompetitionEvent.objects.get_or_create(festival=festival, title=title, min_age=min_age, max_age=max_age, defaults={"order": order})
-        self.stdout.write(self.style.SUCCESS("Festival seed data is ready."))
+        now = timezone.now()
+        festival, created = Festival.objects.get_or_create(
+            title="جشنواره همگانی نجات غریق ندای امید",
+            defaults={
+                "registration_starts_at": now - timedelta(days=1),
+                "registration_ends_at": now + timedelta(days=30),
+                "is_active": True,
+            },
+        )
+
+        if not festival.is_active or festival.registration_ends_at <= now:
+            festival.is_active = True
+            festival.registration_starts_at = now - timedelta(days=1)
+            festival.registration_ends_at = now + timedelta(days=30)
+            festival.save(update_fields=["is_active", "registration_starts_at", "registration_ends_at"])
+
+        for name in POOLS:
+            Pool.objects.update_or_create(name=name, defaults={"is_active": True})
+
+        for order, (title, min_age, max_age) in enumerate(EVENTS, start=1):
+            CompetitionEvent.objects.update_or_create(
+                festival=festival,
+                title=title,
+                min_age=min_age,
+                max_age=max_age,
+                defaults={"order": order, "is_active": True},
+            )
+
+        status = "created" if created else "updated"
+        self.stdout.write(self.style.SUCCESS(f"Festival seed data {status}. Festival ID: {festival.pk}"))
