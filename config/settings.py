@@ -43,7 +43,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
 AUTH_PASSWORD_VALIDATORS = [{"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"}, {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"}, {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"}, {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"}]
-LANGUAGE_CODE = "fa"
+LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Tehran"
 USE_I18N = True
 USE_TZ = True
@@ -74,4 +74,4 @@ SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 22 * 1024 * 1024
-UNFOLD = {"SITE_TITLE": "ندای امید", "SITE_HEADER": "مدیریت جشنواره ندای امید", "SITE_SYMBOL": "pool", "SHOW_HISTORY": True, "SHOW_VIEW_ON_SITE": False}
+UNFOLD = {"SITE_TITLE": "Neda Omid", "SITE_HEADER": "Neda Omid Festival Administration", "SITE_SYMBOL": "pool", "SHOW_HISTORY": True, "SHOW_VIEW_ON_SITE": False}

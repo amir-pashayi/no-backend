@@ -7,7 +7,7 @@ class UserAdmin(DjangoUserAdmin):
     list_display = ("phone", "first_name", "last_name", "is_active", "date_joined")
     search_fields = ("phone", "first_name", "last_name")
     ordering = ("phone",)
-    fieldsets = ((None, {"fields": ("phone", "password")}), ("اطلاعات فردی", {"fields": ("first_name", "last_name", "email")}), ("دسترسی", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}), ("تاریخ‌ها", {"fields": ("last_login", "date_joined")}))
+    fieldsets = ((None, {"fields": ("phone", "password")}), ("Personal information", {"fields": ("first_name", "last_name", "email")}), ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}), ("Important dates", {"fields": ("last_login", "date_joined")}))
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("phone", "first_name", "last_name", "password1", "password2", "is_staff", "is_superuser")}))
 @admin.register(UserProfile)
 class UserProfileAdmin(ModelAdmin):

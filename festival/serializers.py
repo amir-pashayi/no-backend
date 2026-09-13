@@ -1,6 +1,6 @@
 from datetime import date
 import re
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import serializers
 from accounts.models import User, UserProfile
@@ -72,9 +72,14 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if profile and profile.user.phone != phone: raise serializers.ValidationError("این کد ملی با شماره همراه دیگری ثبت شده است.")
         user, _ = User.objects.select_for_update().get_or_create(phone=phone, defaults={"first_name":first_name,"last_name":last_name})
         if hasattr(user, "profile") and user.profile.national_id != national_id: raise serializers.ValidationError("این شماره همراه با کد ملی دیگری ثبت شده است.")
+        if Registration.objects.filter(user=user, festival=validated["festival"]).exists(): raise serializers.ValidationError("برای این کد ملی و شماره همراه قبلاً در این جشنواره ثبت‌نام انجام شده است.")
         user.first_name, user.last_name = first_name, last_name; user.save(update_fields=["first_name","last_name"])
         UserProfile.objects.update_or_create(user=user, defaults={"national_id":national_id,"birth_date":birth_date,"gender":gender})
-        registration = Registration.objects.create(user=user, age_at_registration=calculate_age(birth_date), terms_accepted_at=now, insurance_confirmed_at=now, payment_confirmed_at=now, **validated)
+        try:
+            with transaction.atomic():
+                registration = Registration.objects.create(user=user, age_at_registration=calculate_age(birth_date), terms_accepted_at=now, insurance_confirmed_at=now, payment_confirmed_at=now, **validated)
+        except IntegrityError as error:
+            raise serializers.ValidationError("برای این کاربر قبلاً در این جشنواره ثبت‌نام انجام شده است.") from error
         registration.events.set(event_ids)
         return registration
 class CardRecoverySerializer(serializers.Serializer):
