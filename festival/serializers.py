@@ -1,4 +1,3 @@
-from datetime import date
 import re
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -11,8 +10,16 @@ def validate_national_id(value):
     check = int(value[-1]); total = sum(int(value[i]) * (10-i) for i in range(9)) % 11
     if check != (total if total < 2 else 11-total): raise serializers.ValidationError("کد ملی معتبر نیست.")
     return value
-def calculate_age(birth_date):
-    today = date.today(); return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+def competition_age_from_jalali_year(value):
+    """Maps the festival's fixed Jalali birth-year bands to eligibility groups."""
+    year = int(value.split("/", 1)[0])
+    if 1392 <= year <= 1395:
+        return 12
+    if 1390 <= year <= 1391:
+        return 14
+    if 1387 <= year <= 1389:
+        return 16
+    raise serializers.ValidationError({"birth_date": "سال تولد برای شرکت در جشنواره باید بین ۱۳۸۷ تا ۱۳۹۵ باشد."})
 
 def jalali_to_gregorian(value):
     """Converts a valid Persian YYYY/MM/DD date to a Gregorian date without client trust."""
@@ -56,9 +63,10 @@ class RegistrationSerializer(serializers.ModelSerializer):
         read_only_fields = ["public_id","tracking_code","status","created_at"]
     def validate(self, attrs):
         if not all(attrs[key] for key in ("terms_accepted","insurance_confirmed","payment_confirmed")): raise serializers.ValidationError("تأیید همه شرایط الزامی است.")
-        attrs["birth_date"] = jalali_to_gregorian(attrs["birth_date"])
-        age = calculate_age(attrs["birth_date"])
-        if not 12 <= age <= 18: raise serializers.ValidationError({"birth_date":"سن شرکت‌کننده باید بین ۱۲ تا ۱۸ سال باشد."})
+        jalali_birth_date = attrs["birth_date"]
+        attrs["birth_date"] = jalali_to_gregorian(jalali_birth_date)
+        age = competition_age_from_jalali_year(jalali_birth_date)
+        attrs["_competition_age"] = age
         festival = attrs["festival"]
         if not festival.is_active or not festival.registration_starts_at <= timezone.now() <= festival.registration_ends_at: raise serializers.ValidationError("ثبت‌نام این جشنواره فعال نیست.")
         for event in attrs["event_ids"]:
@@ -66,7 +74,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         return attrs
     @transaction.atomic
     def create(self, validated):
-        now = timezone.now(); event_ids = validated.pop("event_ids"); first_name = validated.pop("first_name"); last_name = validated.pop("last_name"); phone = validated.pop("phone"); national_id = validated.pop("national_id"); birth_date = validated.pop("birth_date"); gender = validated.pop("gender")
+        now = timezone.now(); event_ids = validated.pop("event_ids"); first_name = validated.pop("first_name"); last_name = validated.pop("last_name"); phone = validated.pop("phone"); national_id = validated.pop("national_id"); birth_date = validated.pop("birth_date"); gender = validated.pop("gender"); competition_age = validated.pop("_competition_age")
         validated.pop("terms_accepted"); validated.pop("insurance_confirmed"); validated.pop("payment_confirmed")
         profile = UserProfile.objects.select_for_update().filter(national_id=national_id).select_related("user").first()
         if profile and profile.user.phone != phone: raise serializers.ValidationError("این کد ملی با شماره همراه دیگری ثبت شده است.")
@@ -77,7 +85,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         UserProfile.objects.update_or_create(user=user, defaults={"national_id":national_id,"birth_date":birth_date,"gender":gender})
         try:
             with transaction.atomic():
-                registration = Registration.objects.create(user=user, age_at_registration=calculate_age(birth_date), terms_accepted_at=now, insurance_confirmed_at=now, payment_confirmed_at=now, **validated)
+                registration = Registration.objects.create(user=user, age_at_registration=competition_age, terms_accepted_at=now, insurance_confirmed_at=now, payment_confirmed_at=now, **validated)
         except IntegrityError as error:
             raise serializers.ValidationError("برای این کاربر قبلاً در این جشنواره ثبت‌نام انجام شده است.") from error
         registration.events.set(event_ids)
