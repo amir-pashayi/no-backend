@@ -5,20 +5,26 @@ from festival.models import CompetitionEvent, Festival, Pool
 
 POOLS = ["هفت تیر", "قصر موج", "ولایت (جانبازان)", "مخابرات", "بسیج", "امام علی", "شهرداری", "باکری", "کارگران", "دانشگاه", "موج‌های آبی", "امیرکبیر", "شهید رجایی", "سایر"]
 EVENTS = [("۲۵ متر کرال سینه تک‌دست", 12, 13), ("۵۰ متر ترکیبی", 12, 15), ("۲۵ متر شنای آزاد عبور از مانع", 12, 13), ("۵۰ متر کرال سینه تک‌دست", 14, 15), ("۵۰ متر شنای آزاد عبور از مانع", 14, 15), ("۵۰ متر حمل آدمک", 16, 18), ("۵۰ متر ترکیبی رده ۱۶–۱۸", 16, 18), ("۱۰۰ متر شنای آزاد عبور از مانع", 16, 18), ("پرتاب طناب", 16, 18)]
+FESTIVAL_TITLE = "جشنواره همگانی نجات غریق (ندای امید)"
+LEGACY_FESTIVAL_TITLE = "جشنواره همگانی نجات غریق ندای امید"
 
 class Command(BaseCommand):
     help = "داده‌های اولیه جشنواره، مواد مسابقه و استخرها را ایجاد می‌کند."
 
     def handle(self, *args, **kwargs):
         now = timezone.now()
-        festival, created = Festival.objects.get_or_create(
-            title="جشنواره همگانی نجات غریق ندای امید",
-            defaults={
-                "registration_starts_at": now - timedelta(days=1),
-                "registration_ends_at": now + timedelta(days=30),
-                "is_active": True,
-            },
-        )
+        festival = Festival.objects.filter(title=FESTIVAL_TITLE).first() or Festival.objects.filter(title=LEGACY_FESTIVAL_TITLE).first()
+        created = festival is None
+        if created:
+            festival = Festival.objects.create(
+                title=FESTIVAL_TITLE,
+                registration_starts_at=now - timedelta(days=1),
+                registration_ends_at=now + timedelta(days=30),
+                is_active=True,
+            )
+        elif festival.title != FESTIVAL_TITLE:
+            festival.title = FESTIVAL_TITLE
+            festival.save(update_fields=["title"])
 
         if not festival.is_active or festival.registration_ends_at <= now:
             festival.is_active = True

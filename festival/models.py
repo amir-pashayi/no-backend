@@ -12,7 +12,7 @@ class Pool(models.Model):
     def __str__(self): return self.name
 
 class Festival(models.Model):
-    title = models.CharField(max_length=160, default="Neda Omid Lifeguard Festival")
+    title = models.CharField(max_length=160, default="جشنواره همگانی نجات غریق (ندای امید)")
     registration_starts_at = models.DateTimeField()
     registration_ends_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)
